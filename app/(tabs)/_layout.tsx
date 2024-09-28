@@ -27,7 +27,7 @@ export default function TabLayout() {
         name="form"
         options={{
           title: "Novo Cronograma",
-          tabBarButton: () => null, // Oculta o botão da aba
+          tabBarButton: () => null,
         }}
       />
     </Tabs>

@@ -14,6 +14,8 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { colors } from "../theme/colorPalette";
 import { FontAwesome } from "@expo/vector-icons";
+import { insertSchedule } from "../db/Schedules";
+import { sendToOpenAI } from "../helpers/createSchedule";
 
 type Subject = {
   name: string;
@@ -111,16 +113,30 @@ const StudyScheduleForm = () => {
     setShowPicker({ [day]: true });
   };
 
-  const handleSubmit = () => {
-    const userInput = {
-      subjects,
-      availability,
-    };
-    console.log(userInput);
-    // here we will send the input for the AI
+  const handleSubmit = async () => {
+    try {
+      const scheduleData = {
+        user: { name: "student" },
+        subjects,
+        availability: Object.fromEntries(
+          Object.entries(availability).filter(
+            ([_, times]) => !(times.start === "00:00" && times.end === "00:00")
+          )
+        ),
+      };
 
-    setAvailability(initialAvailability);
-    setSubjects([]);
+      const response = await sendToOpenAI(scheduleData);
+      console.log("reposta:", response);
+
+      await insertSchedule("Meu Cronograma", response);
+      console.log("Cronograma gerado e salvo com sucesso!");
+
+      // Resetando o formulário
+      setAvailability(initialAvailability);
+      setSubjects([]);
+    } catch (error) {
+      console.error("Erro ao gerar ou salvar o cronograma:", error);
+    }
   };
 
   return (
@@ -175,6 +191,10 @@ const StudyScheduleForm = () => {
 
       <View style={styles.section}>
         <Text style={styles.subtitle}>Horários Disponíveis</Text>
+        <Text style={styles.note}>
+          *Caso não tenha disponibilidade no dia, deixe o horario de inicio e
+          fim como "00:00"
+        </Text>
         {Object.keys(availability).map((day) => (
           <View key={day} style={styles.dayContainer}>
             <Text style={styles.dayTitle}>
@@ -234,6 +254,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 18,
     fontWeight: "bold",
+    color: colors.darkText,
+    marginBottom: 10,
+  },
+  note: {
+    fontSize: 14,
     color: colors.darkText,
     marginBottom: 10,
   },
