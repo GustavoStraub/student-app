@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,43 +7,63 @@ import {
   StyleSheet,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { FontAwesome } from "@expo/vector-icons"; // Não precisa importar novamente se já estiver importado em outro arquivo.
-import { colors } from "../theme/colorPalette"; // Certifique-se de que o caminho está correto.
-import { useRouter } from "expo-router";
-
-const mockSchedules = [
-  {
-    id: "1",
-    title: "Cronograma de Matemática",
-    description: "Estudo de matemática 2h por dia.",
-  },
-  {
-    id: "2",
-    title: "Cronograma de Programação",
-    description: "Estudo de algoritmos e lógica de programação.",
-  },
-];
+import { FontAwesome } from "@expo/vector-icons";
+import { colors } from "../theme/colorPalette";
+import { useFocusEffect, useRouter } from "expo-router";
+import { flushSchedules, getAllSchedules, Schedule } from "../db/Schedules";
+import { GPTScheduleResponse } from "../types/Schedule";
 
 export default function Index() {
   const { push } = useRouter();
+
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+
+  const loadSchedules = async () => {
+    try {
+      const allSchedules = await getAllSchedules();
+
+      setSchedules(allSchedules);
+    } catch (error) {
+      console.error("Erro ao carregar cronogramas:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSchedules();
+    }, [])
+  );
 
   const handleAddSchedule = () => {
     push("/(tabs)/form");
   };
 
-  const renderItem = ({ item }: { item: (typeof mockSchedules)[0] }) => (
-    <View style={styles.card}>
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.description}>{item.description}</Text>
-    </View>
-  );
+  const renderItem = ({ item }: { item: Schedule }) => {
+    const schedule: GPTScheduleResponse = JSON.parse(item.data);
+    return (
+      <View style={styles.card}>
+        <Text style={styles.title}>{item.name}</Text>
+        <Text style={styles.description}>{schedule.notes}</Text>
+        <Text style={styles.description}>
+          {schedule.schedule.map((day) => {
+            return `${day.day}: \n ${day.studySessions
+              .map(
+                (session) =>
+                  `${session.subject} (${session.startTime} - ${session.endTime})`
+              )
+              .join("\n")}\n\n`;
+          })}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={mockSchedules}
+        data={schedules}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>Nenhum cronograma encontrado.</Text>
@@ -53,6 +73,10 @@ export default function Index() {
 
       <TouchableOpacity style={styles.fab} onPress={handleAddSchedule}>
         <FontAwesome name="plus" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.flush} onPress={flushSchedules}>
+        <Text>Flush</Text>
       </TouchableOpacity>
     </View>
   );
@@ -89,6 +113,22 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 20,
     right: 20,
+    backgroundColor: colors.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  flush: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
     backgroundColor: colors.primary,
     width: 60,
     height: 60,

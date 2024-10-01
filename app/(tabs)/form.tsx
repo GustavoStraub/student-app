@@ -16,7 +16,47 @@ import { colors } from "../theme/colorPalette";
 import { FontAwesome } from "@expo/vector-icons";
 import { insertSchedule } from "../db/Schedules";
 import { sendToOpenAI } from "../helpers/createSchedule";
+import { GPTScheduleResponse } from "../types/Schedule";
+import { scheduleNotificationsForWeek } from "../helpers/scheduleNotification";
 
+const mockResponse = {
+  schedule: [
+    {
+      day: "segunda-feira",
+      studySessions: [
+        { subject: "Matemática", startTime: "17:30", endTime: "18:30" },
+        { subject: "História", startTime: "18:30", endTime: "19:30" },
+        { subject: "Português", startTime: "19:30", endTime: "20:00" },
+      ],
+    },
+    {
+      day: "terça-feira",
+      studySessions: [
+        { subject: "Português", startTime: "00:32", endTime: "00:43" },
+        { subject: "Matemática", startTime: "00:43", endTime: "01:20" },
+        { subject: "História", startTime: "01:20", endTime: "02:00" },
+      ],
+    },
+    {
+      day: "quarta-feira",
+      studySessions: [
+        { subject: "História", startTime: "16:30", endTime: "17:30" },
+        { subject: "Português", startTime: "17:30", endTime: "18:30" },
+        { subject: "Matemática", startTime: "18:30", endTime: "19:30" },
+      ],
+    },
+    {
+      day: "quinta-feira",
+      studySessions: [
+        { subject: "Matemática", startTime: "20:00", endTime: "21:00" },
+        { subject: "História", startTime: "21:00", endTime: "22:00" },
+        { subject: "Português", startTime: "22:00", endTime: "22:30" },
+      ],
+    },
+  ],
+  notes:
+    "Esse cronograma equilibra as matérias, dedicando um tempo razoável para cada uma. Considere revisar o conteúdo antes das sessões para maximizar seu aprendizado.",
+};
 type Subject = {
   name: string;
   difficulty: number;
@@ -57,7 +97,10 @@ const dayLabels: { [key in keyof WeekAvailability]: string } = {
   sunday: "Domingo",
 };
 
+const initialScheduleName = "Meu Cronograma";
+
 const StudyScheduleForm = () => {
+  const [scheduleName, setScheduleName] = useState(initialScheduleName);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [currentSubject, setCurrentSubject] = useState<Subject>({
     name: "",
@@ -125,15 +168,24 @@ const StudyScheduleForm = () => {
         ),
       };
 
-      const response = await sendToOpenAI(scheduleData);
-      console.log("reposta:", response);
+      // Enviando dados para a OpenAI
+      // const response: any = await sendToOpenAI(scheduleData);
 
-      await insertSchedule("Meu Cronograma", response);
-      console.log("Cronograma gerado e salvo com sucesso!");
-
-      // Resetando o formulário
-      setAvailability(initialAvailability);
-      setSubjects([]);
+      // Verificando se a resposta é válida
+      // response && response.choices && response.choices.length > 0
+      if (true) {
+        // const gptSchedule = response.choices[0].message
+        //   .content as GPTScheduleResponse;
+        // console.log(gptSchedule);
+        await insertSchedule(scheduleName, mockResponse);
+        console.log("Cronograma gerado e salvo com sucesso!");
+        await scheduleNotificationsForWeek(mockResponse);
+        // Resetando o formulário
+        setAvailability(initialAvailability);
+        setSubjects([]);
+      } else {
+        console.error("Resposta inválida da OpenAI:", mockResponse);
+      }
     } catch (error) {
       console.error("Erro ao gerar ou salvar o cronograma:", error);
     }
@@ -141,7 +193,16 @@ const StudyScheduleForm = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Cronograma de Estudos</Text>
+      <View style={styles.section}>
+        <Text style={styles.subtitle}>Nome do cronograma</Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder={initialScheduleName}
+          value={scheduleName}
+          onChangeText={setScheduleName}
+        />
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.subtitle}>Adicionar Matéria</Text>
