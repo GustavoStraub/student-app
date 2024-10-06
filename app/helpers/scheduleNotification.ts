@@ -11,26 +11,28 @@ type ScheduleNotificationProps = {
 const scheduleWeeklyNotification = async ({
   subject,
   startTime,
+  endTime,
   dayOfWeek,
-}: ScheduleNotificationProps): Promise<void> => {
-  const [hours, minutes] = startTime.split(":");
+  type,
+}: ScheduleNotificationProps & {
+  endTime?: string;
+  type: "start" | "end";
+}): Promise<void> => {
+  const [hours, minutes] = (type === "start" ? startTime : endTime)?.split(
+    ":"
+  ) || ["00", "00"];
 
   console.log(
     `Agendando notificação para ${subject} às ${hours}:${minutes} no dia ${dayOfWeek}`
   );
 
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true, // always show alert
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
-  });
-
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: "Hora de Estudar!",
-      body: ` Vamos começar com: ${subject} 📚`,
+      title: type === "start" ? "Hora de Estudar!" : "Fim do Estudo!",
+      body:
+        type === "start"
+          ? `Vamos começar com: ${subject} 📚`
+          : `Parabéns! Consistência é a chave do sucesso! 🎉`,
     },
     trigger: {
       weekday: dayOfWeek,
@@ -67,11 +69,24 @@ export const scheduleNotificationsForWeek = async (
     const dayOfWeek = daysOfWeek[daySchedule.day.toLowerCase()];
     if (dayOfWeek) {
       const firstSession = daySchedule.studySessions[0];
-      console.log(`Scheduling ${firstSession.subject} on ${daySchedule.day}`);
+      const lastSession =
+        daySchedule.studySessions[daySchedule.studySessions.length - 1];
+
+      // Notify when the first session starts
       await scheduleWeeklyNotification({
         subject: firstSession.subject,
         startTime: firstSession.startTime,
         dayOfWeek,
+        type: "start",
+      });
+
+      // Notify when the last session ends
+      await scheduleWeeklyNotification({
+        subject: lastSession.subject,
+        startTime: lastSession.startTime,
+        endTime: lastSession.endTime,
+        dayOfWeek,
+        type: "end",
       });
     }
   }
