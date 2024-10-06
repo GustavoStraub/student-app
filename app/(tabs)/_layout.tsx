@@ -15,11 +15,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="resumos"
+        name="pomodoro"
         options={{
-          title: "Resumos",
+          title: "Pomodoro",
           tabBarIcon: ({ color }) => (
-            <FontAwesome size={28} name="book" color={color} />
+            <FontAwesome size={28} name="clock-o" color={color} />
           ),
         }}
       />

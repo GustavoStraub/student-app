@@ -1,4 +1,5 @@
 import * as SQLite from "expo-sqlite";
+import { cancelNotificationsForSchedule } from "../helpers/excludeNotification";
 
 export type Schedule = {
   id: number;
@@ -42,4 +43,13 @@ export const flushSchedules = async (): Promise<void> => {
   });
   await db.runAsync("DELETE FROM schedules");
   console.log("Cronogramas deletados!");
+};
+
+export const excludeScheduleAndNotifications = async (
+  scheduleId: number
+): Promise<void> => {
+  await cancelNotificationsForSchedule(scheduleId);
+
+  await deleteSchedule(scheduleId);
+  console.log("Cronograma e notificações excluídos!");
 };
