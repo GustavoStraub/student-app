@@ -3,8 +3,7 @@ import * as SQLite from "expo-sqlite";
 export const setupDatabase = async () => {
   const db = await SQLite.openDatabaseAsync("studySchedules.db");
 
-  await db.execAsync(`
-    PRAGMA journal_mode = WAL;
+  await db.runAsync(`
     CREATE TABLE IF NOT EXISTS schedules (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -12,5 +11,5 @@ export const setupDatabase = async () => {
     );
   `);
 
-  console.log("Tabela criada com sucesso!");
+  console.log("Schedule Table Created!");
 };

@@ -9,7 +9,7 @@ export type Schedule = {
 
 export const insertSchedule = async (
   name: string,
-  data: object
+  data: string
 ): Promise<void> => {
   const db = await SQLite.openDatabaseAsync("studySchedules.db", {
     useNewConnection: true,
@@ -18,23 +18,21 @@ export const insertSchedule = async (
   const result = await db.runAsync(
     "INSERT INTO schedules (name, data) VALUES (?, ?)",
     name,
-    JSON.stringify(data)
+    data
   );
 
-  console.log("Cronograma inserido com sucesso!", result);
+  console.log("Schedule saved!", result);
 };
 
 export const getAllSchedules = async (): Promise<Schedule[]> => {
   const db = await SQLite.openDatabaseAsync("studySchedules.db");
   const schedules: Schedule[] = await db.getAllAsync("SELECT * FROM schedules");
-  console.log("Cronogramas carregados:", schedules);
   return schedules;
 };
 
 export const deleteSchedule = async (id: number): Promise<void> => {
   const db = await SQLite.openDatabaseAsync("studySchedules.db");
   await db.runAsync("DELETE FROM schedules WHERE id = ?", id);
-  console.log("Cronograma deletado!");
 };
 
 export const flushSchedules = async (): Promise<void> => {
@@ -42,7 +40,6 @@ export const flushSchedules = async (): Promise<void> => {
     useNewConnection: true,
   });
   await db.runAsync("DELETE FROM schedules");
-  console.log("Cronogramas deletados!");
 };
 
 export const excludeScheduleAndNotifications = async (
@@ -51,5 +48,4 @@ export const excludeScheduleAndNotifications = async (
   await cancelNotificationsForSchedule(scheduleId);
 
   await deleteSchedule(scheduleId);
-  console.log("Cronograma e notificações excluídos!");
 };

@@ -49,7 +49,7 @@ export const scheduleNotificationsForWeek = async (
   const hasPermission = await askNotificationPermission();
 
   if (!hasPermission) {
-    console.log("Permissão para notificações negada.");
+    console.log("Permission denied");
     return;
   }
 

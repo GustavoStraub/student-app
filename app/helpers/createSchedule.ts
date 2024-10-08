@@ -30,6 +30,8 @@ export const sendToOpenAI = async (scheduleData: object): Promise<object> => {
               Certifique-se de que os horários estão equilibrados e respeitam as preferências fornecidas.
               Se a data de inicio e data de fim são iguais para o dia, então o dia é um dia de folga. 
               Use o campo de notes para fornecer informações que possam ser uteis para o usuário.
+              Responda estritamente com JSON válido, sem nenhum texto adicional fora da estrutura JSON.
+              O nome_do_dia deve sempre ser escrito em português e com a primeira letra maiúscula.
             `,
           },
           {
@@ -45,7 +47,7 @@ export const sendToOpenAI = async (scheduleData: object): Promise<object> => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Erro ao conectar com a OpenAI:", error);
-    throw new Error("Falha ao se conectar com a OpenAI");
+    console.error("error when trying to reach OpenAI:", error);
+    throw new Error("error when trying to reach OpenAI:");
   }
 };

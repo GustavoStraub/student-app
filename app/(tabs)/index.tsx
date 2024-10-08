@@ -23,7 +23,7 @@ export default function Index() {
 
       setSchedules(allSchedules);
     } catch (error) {
-      console.error("Erro ao carregar cronogramas:", error);
+      console.error("Erro while loading schedules", error);
     }
   };
 
@@ -32,7 +32,6 @@ export default function Index() {
       loadSchedules();
     }, [])
   );
-
   const handleAddSchedule = () => {
     push("/(tabs)/form");
   };
@@ -42,6 +41,7 @@ export default function Index() {
       await deleteSchedule(item.id);
       loadSchedules();
     };
+
     const schedule: GPTScheduleResponse = JSON.parse(item.data);
 
     return (

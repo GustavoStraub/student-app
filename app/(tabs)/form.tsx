@@ -7,6 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker, {
@@ -16,47 +18,8 @@ import { colors } from "../theme/colorPalette";
 import { FontAwesome } from "@expo/vector-icons";
 import { insertSchedule } from "../db/Schedules";
 import { sendToOpenAI } from "../helpers/createSchedule";
-import { GPTScheduleResponse } from "../types/Schedule";
-import { scheduleNotificationsForWeek } from "../helpers/scheduleNotification";
+import { useRouter } from "expo-router";
 
-const mockResponse = {
-  schedule: [
-    {
-      day: "segunda-feira",
-      studySessions: [
-        { subject: "Matemática", startTime: "17:30", endTime: "18:30" },
-        { subject: "História", startTime: "18:30", endTime: "19:30" },
-        { subject: "Português", startTime: "19:30", endTime: "20:00" },
-      ],
-    },
-    {
-      day: "terça-feira",
-      studySessions: [
-        { subject: "Português", startTime: "00:32", endTime: "00:43" },
-        { subject: "Matemática", startTime: "00:43", endTime: "01:20" },
-        { subject: "História", startTime: "01:20", endTime: "02:00" },
-      ],
-    },
-    {
-      day: "quarta-feira",
-      studySessions: [
-        { subject: "História", startTime: "16:30", endTime: "17:30" },
-        { subject: "Português", startTime: "17:30", endTime: "18:30" },
-        { subject: "Matemática", startTime: "18:30", endTime: "19:30" },
-      ],
-    },
-    {
-      day: "quinta-feira",
-      studySessions: [
-        { subject: "Matemática", startTime: "20:00", endTime: "21:00" },
-        { subject: "História", startTime: "21:00", endTime: "22:00" },
-        { subject: "Português", startTime: "22:00", endTime: "22:30" },
-      ],
-    },
-  ],
-  notes:
-    "Esse cronograma equilibra as matérias, dedicando um tempo razoável para cada uma. Considere revisar o conteúdo antes das sessões para maximizar seu aprendizado.",
-};
 type Subject = {
   name: string;
   difficulty: number;
@@ -113,6 +76,9 @@ const StudyScheduleForm = () => {
     null
   );
   const [selectedType, setSelectedType] = useState<"start" | "end">("start");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { push } = useRouter();
 
   const addSubject = () => {
     if (currentSubject.name) {
@@ -156,7 +122,54 @@ const StudyScheduleForm = () => {
     setShowPicker({ [day]: true });
   };
 
+  const validateTime = (start: string, end: string): boolean => {
+    const [startHour, startMinute] = start.split(":").map(Number);
+    const [endHour, endMinute] = end.split(":").map(Number);
+
+    if (startHour > endHour) return false;
+    if (startHour === endHour && startMinute >= endMinute) return false;
+    return true;
+  };
+
+  const validateForm = (): boolean => {
+    if (subjects.length === 0) {
+      Alert.alert("Erro", "Você precisa adicionar pelo menos uma matéria.");
+      return false;
+    }
+
+    const hasAvailableDay = Object.values(availability).some(
+      (day) => day.start !== "00:00" || day.end !== "00:00"
+    );
+    if (!hasAvailableDay) {
+      Alert.alert(
+        "Erro",
+        "Você precisa definir a disponibilidade em pelo menos um dia."
+      );
+      return false;
+    }
+
+    for (const [day, times] of Object.entries(availability)) {
+      if (
+        times.start !== "00:00" &&
+        times.end !== "00:00" &&
+        !validateTime(times.start, times.end)
+      ) {
+        Alert.alert(
+          "Erro",
+          `O horário de início deve ser antes do horário de fim em ${
+            dayLabels[day as keyof WeekAvailability]
+          }`
+        );
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleSubmit = async () => {
+    if (!validateForm()) return;
+    setIsLoading(true);
     try {
       const scheduleData = {
         user: { name: "student" },
@@ -168,26 +181,31 @@ const StudyScheduleForm = () => {
         ),
       };
 
-      // Enviando dados para a OpenAI
-      // const response: any = await sendToOpenAI(scheduleData);
+      const response: any = await sendToOpenAI(scheduleData);
 
-      // Verificando se a resposta é válida
-      // response && response.choices && response.choices.length > 0
-      if (true) {
-        // const gptSchedule = response.choices[0].message
-        //   .content as GPTScheduleResponse;
-        // console.log(gptSchedule);
-        await insertSchedule(scheduleName, mockResponse);
-        console.log("Cronograma gerado e salvo com sucesso!");
-        await scheduleNotificationsForWeek(mockResponse);
-        // Resetando o formulário
-        setAvailability(initialAvailability);
-        setSubjects([]);
+      if (response && response.choices[0]?.message?.content) {
+        const gptScheduleContent = response.choices[0].message.content;
+
+        try {
+          const parsedSchedule = JSON.parse(gptScheduleContent);
+          console.log("Valid response:", parsedSchedule);
+
+          await insertSchedule(scheduleName, gptScheduleContent);
+          console.log("Schedule saved!");
+
+          setAvailability(initialAvailability);
+          setSubjects([]);
+          push("/(tabs)/");
+        } catch (jsonError) {
+          console.error("Invalid response:", jsonError);
+        }
       } else {
-        console.error("Resposta inválida da OpenAI:", mockResponse);
+        console.error("Invalid AI response:", response);
       }
     } catch (error) {
-      console.error("Erro ao gerar ou salvar o cronograma:", error);
+      console.error("Error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -294,8 +312,16 @@ const StudyScheduleForm = () => {
         ))}
       </View>
 
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitButtonText}>Criar Cronograma</Text>
+      <TouchableOpacity
+        style={styles.submitButton}
+        onPress={handleSubmit}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="small" color={colors.white} />
+        ) : (
+          <Text style={styles.submitButtonText}>Criar Cronograma</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
